@@ -2,8 +2,6 @@ import torch
 from torch import nn
 
 class UKGE(nn.Module):
-    def logistic_map(self, x):
-        return 1.0/(1.0+torch.exp(-x))
     
     def bounded_map(self, x):
         return torch.min(torch.max(x, 0, 1))
@@ -17,7 +15,7 @@ class UKGE(nn.Module):
         self.lin = nn.Linear(1, 1)
 
         if logi:
-            self.map = self.logistic_map
+            self.map = torch.nn.Sigmoid()
         else:
             self.map = self.bounded_map
 

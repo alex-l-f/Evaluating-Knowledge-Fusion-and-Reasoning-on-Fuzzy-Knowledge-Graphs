@@ -6,19 +6,17 @@ from tqdm import tqdm
 
 #setup
 epochs = 100
-learn_rate = 0.0001
-dim = 512
-batch_size = 1024
+learn_rate = 0.001
+dim = 128
+batch_size = 128
 device = "cuda"
-data_dir = "./data/nl27k"
+data_dir = "./data/cn15k"
 
 #setup datasets
 train_set = KGDataset(data_dir + "/train.tsv")
-val_set = KGDataset(data_dir + "/val.tsv")
+val_set = KGDataset(data_dir + "/val.tsv", train_set)
 #generate negative samples
-train_set.createNegativeSamples(1)
-#make val lookups consistant
-val_set.set_lookups(train_set)
+train_set.createNegativeSamples(2)
 
 #setup data laoders
 train_loader = DataLoader(train_set, batch_size, shuffle=True)
@@ -38,7 +36,7 @@ def eval():
             confidences = model(data.to(device))
             loss += loss_func(confidences, targets.to(device)).detach()
     #output val loss and example prediction
-    print(f"Val loss: {loss/len(val_loader)} \nExample: ({val_set.lookup_ents[data[0,0].item()]}, {val_set.lookup_rels[data[0,1].item()]}, {val_set.lookup_ents[data[0,2].item()]}): Predicted: {confidences[0].item()} - Truth: {targets[0]}")
+    print(f"Val loss: {loss/len(val_loader):.2e} \nExample: ({val_set.lookup_ents[data[0,0].item()]}, {val_set.lookup_rels[data[0,1].item()]}, {val_set.lookup_ents[data[0,2].item()]}): Predicted: {confidences[0].item():.2f} - Truth: {targets[0]:.2f}")
 
 r_loss = 0
 
@@ -50,5 +48,5 @@ for e in range(epochs):
         optim.step()
         optim.zero_grad()
         r_loss = r_loss * 0.9 + loss.detach() * 0.1
-        pbar.set_description(f"e: {e} - t_loss: {r_loss}")
+        pbar.set_description(f"e: {e} - t_loss: {r_loss:.2e}")
     eval()

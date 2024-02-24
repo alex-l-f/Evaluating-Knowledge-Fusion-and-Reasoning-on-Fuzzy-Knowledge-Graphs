@@ -4,7 +4,7 @@ import random
 
 class KGDataset(Dataset):
 
-    def __init__(self, filename):
+    def __init__(self, filename, import_indices=None):
         # entity vocab
         self.ents = []
         # rel vocab
@@ -14,6 +14,12 @@ class KGDataset(Dataset):
         self.index_rels = {}
         self.lookup_ents = {}
         self.lookup_rels = {}
+
+        if import_indices is not None:
+            self.index_rels = import_indices.index_rels
+            self.index_ents = import_indices.index_ents
+            self.lookup_ents = import_indices.lookup_ents
+            self.lookup_rels = import_indices.lookup_rels
 
         self.triples_record = set([])
 
@@ -69,12 +75,6 @@ class KGDataset(Dataset):
         #tensorize and cat negative examples
         neg_t = torch.tensor(created_negatives)
         self.triples = torch.cat([self.triples, neg_t], 0)
-
-    def set_lookups(self, dataset):
-        self.index_rels = dataset.index_rels
-        self.index_ents = dataset.index_ents
-        self.lookup_ents = dataset.lookup_ents
-        self.lookup_rels = dataset.lookup_rels
 
     def lookupRelName(self, x):
         return self.lookup_rels[x]
