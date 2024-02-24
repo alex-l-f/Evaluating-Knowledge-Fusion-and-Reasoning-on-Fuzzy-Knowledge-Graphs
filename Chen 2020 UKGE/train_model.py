@@ -17,7 +17,6 @@ train_set = KGDataset(data_dir + "/train.tsv")
 val_set = KGDataset(data_dir + "/val.tsv")
 #generate negative samples
 train_set.createNegativeSamples(1)
-val_set.createNegativeSamples(1)
 #make val lookups consistant
 val_set.set_lookups(train_set)
 
