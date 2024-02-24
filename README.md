@@ -1,1 +1,3 @@
-Reimplementation of UKGE paper for CMPUT 656
+Repository for CMPUT 656 Project
+
+Currently just a reimplementation of the [UKGE paper](https://arxiv.org/abs/1811.10667).
