@@ -20,14 +20,24 @@ class KGDataset(Dataset):
             self.index_ents = import_indices.index_ents
             self.lookup_ents = import_indices.lookup_ents
             self.lookup_rels = import_indices.lookup_rels
+            self.ents = import_indices.ents
+            self.rels = import_indices.rels
 
         self.triples_record = set([])
+        self.base_triples_record = set([])
 
         # save triples as array of indices
-        self.triples = self.load_triples(filename)
+        self.triples, self.weights = self.load_triples(filename)
+        self.triples.requires_grad = False
+        self.num_base = len(self.triples)
+
+    def resetTupleSet(self):
+        self.triples_record = self.base_triples_record.copy()
+
 
     def load_triples(self, filename, splitter='\t', line_end='\n'):
         triples = []
+        weights = []
         last_e = -1
         last_r = -1
 
@@ -53,28 +63,11 @@ class KGDataset(Dataset):
             t = self.index_ents[line[2]]
             w = float(line[3])
 
-            triples.append([h, r, t, w])
-            self.triples_record.add((h, r, t))
-        return torch.tensor(triples)
-    
-    def createNegativeSamples(self, ratio):
-        num_negatives = int(self.triples.size(0)*ratio)
-        created_negatives = []
-        while len(created_negatives) < num_negatives:
-            #sample a random relationship and corrupt
-            #this is REAL bad, but it's what the paper does
-            rsh = random.randint(0, self.triples.size(0)-1)
-            if random.randint(0,1):
-                nrel = (self.triples[rsh,0], self.triples[rsh,1], random.randint(0, len(self.ents)-1))
-            else:
-                nrel = (random.randint(0, len(self.ents)-1),self.triples[rsh,1], self.triples[rsh,2])
-            if nrel not in self.triples_record:
-                created_negatives.append([*nrel, 0.0])
-                self.triples_record.add(nrel)
-
-        #tensorize and cat negative examples
-        neg_t = torch.tensor(created_negatives)
-        self.triples = torch.cat([self.triples, neg_t], 0)
+            triples.append([h, r, t])
+            weights.append(w)
+            self.base_triples_record.add((h, r, t))
+        self.triples_record = self.base_triples_record.copy()
+        return torch.tensor(triples, dtype=torch.int), torch.tensor(weights)
 
     def lookupRelName(self, x):
         return self.lookup_rels[x]
@@ -86,4 +79,4 @@ class KGDataset(Dataset):
         return len(self.triples)
 
     def __getitem__(self, idx):
-        return self.triples[idx, :-1].type(torch.int), self.triples[idx, -1]
+        return self.triples[idx], self.weights[idx]
