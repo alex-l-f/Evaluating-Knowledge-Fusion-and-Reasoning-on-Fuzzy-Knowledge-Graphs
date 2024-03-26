@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 import torch
-from KGDataset import KGDataset
-from UKGE import UKGE
+from UKGE.KGDataset import KGDataset
+from UKGE.UKGE import UKGE
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np

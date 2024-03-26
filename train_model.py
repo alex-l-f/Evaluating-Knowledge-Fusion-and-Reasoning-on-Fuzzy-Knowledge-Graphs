@@ -1,10 +1,9 @@
 from torch.utils.data import DataLoader
 import torch
-from KGDataset import KGDataset
-from UKGE import UKGE
+from UKGE.KGDataset import KGDataset
+from UKGE.UKGE import UKGE
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
 import numpy as np
 import random
 
@@ -26,7 +25,7 @@ train_loader = DataLoader(train_set, batch_size, shuffle=True)
 val_loader = DataLoader(val_set, batch_size, shuffle=True)
 
 #model setup
-model = UKGE(len(train_set.ents), len(train_set.rels), dim)
+model = UKGE(len(train_set.ents), len(train_set.rels), dim, logi=False)
 
 #load model from ./model folder
 #model = torch.load("./models/9.09e-02.model")
@@ -82,8 +81,8 @@ def plot_loss():
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
 
-    #plt.yscale('log')
-    #ax = plt.gca()
+    plt.yscale('log')
+    ax = plt.gca()
     #ax.yaxis.set_major_formatter(ScalarFormatter())
 
     plt.legend()
