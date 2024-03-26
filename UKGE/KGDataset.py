@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import torch
 import random
+import os.path
 
 class KGDataset(Dataset):
 
@@ -28,6 +29,11 @@ class KGDataset(Dataset):
 
         # save triples as array of indices
         self.triples, self.weights = self.load_triples(filename)
+        # load psl triples if the _psl.tsv file exists
+        self.using_psl = os.path.isfile(filename.replace(".tsv", "_psl.tsv"))
+        if self.using_psl:
+            self.psl_triples, self.psl_weights = self.load_triples(filename.replace(".tsv", "_psl.tsv"))
+            self.psl_len = len(self.psl_triples)
         self.triples.requires_grad = False
         self.num_base = len(self.triples)
 
@@ -74,9 +80,16 @@ class KGDataset(Dataset):
     
     def lookupEntName(self, x):
         return self.lookup_ents[x]
+    
+    def get_psl_ratio(self):
+        return (self.psl_triples.size(0) / self.triples.size(0))
 
     def __len__(self):
         return len(self.triples)
 
     def __getitem__(self, idx):
+        if self.using_psl:
+            #get random psl entries
+            pidx = random.randint(0, len(self.psl_triples)-1)
+            return self.triples[idx], self.weights[idx], self.psl_triples[pidx], self.psl_weights[pidx]
         return self.triples[idx], self.weights[idx]

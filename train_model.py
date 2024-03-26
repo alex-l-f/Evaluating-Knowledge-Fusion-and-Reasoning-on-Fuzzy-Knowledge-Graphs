@@ -5,20 +5,27 @@ from UKGE.UKGE import UKGE
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
-import random
 
 #setup
-epochs = 300
+epochs = 1000
 learn_rate = 0.001
 dim = 128
-batch_size = 512
+batch_size = 128
+eval_every = 10
+
 device = "cuda"
 data_dir = "./data/"
 data_set = "nl27k"
+use_reg = True
+reg_scale = 0.0005
+num_negatives = 10
 
 #setup datasets
 train_set = KGDataset(data_dir + data_set + "/train.tsv")
 val_set = KGDataset(data_dir + data_set + "/val.tsv", train_set)
+psl_scale = 0.2#train_set.get_psl_ratio()
+
+using_psl = train_set.using_psl
 
 #setup data loaders
 train_loader = DataLoader(train_set, batch_size, shuffle=True)
@@ -37,31 +44,22 @@ model.to(device)
 loss_func = torch.nn.MSELoss()
 optim = torch.optim.Adam(model.parameters(), learn_rate)
 
-def createNegativeSamples(dataset, relation_set, ratio):
+def createNegativeSamples(data, num_negatives):
     with torch.no_grad():
-        dataset.triples = dataset.triples[:dataset.num_base].clone()
-        dataset.weights = dataset.weights[:dataset.num_base].clone()
-        dataset.resetTupleSet()
-        num_negatives = int(dataset.triples.size(0)*ratio)
-        created_negatives = []
-        weights = []
-        while len(created_negatives) < num_negatives:
-            #sample a random relationship and corrupt
-            #this is REAL bad, but it's what the paper does
-            rsh = random.randint(0, dataset.triples.size(0)-1)
-            if random.randint(0,1):
-                nrel = (dataset.triples[rsh,0].item(), dataset.triples[rsh,1].item(), random.randint(0, len(dataset.ents)-1))
-            else:
-                nrel = (random.randint(0, len(dataset.ents)-1), dataset.triples[rsh,1].item(), dataset.triples[rsh,2].item())
-            if nrel not in relation_set:
-                created_negatives.append(nrel)
-                weights.append(0.0)
-                dataset.triples_record.add(nrel)
+        h = data[:,0]
+        r = data[:,1]
+        t = data[:,2]
+        #corrupt head set
+        h_corrupt = torch.randint(0, len(train_set.ents), [num_negatives* len(data)])
+        #corrupt tail set
+        t_corrupt = torch.randint(0, len(train_set.ents), [num_negatives* len(data)])
 
-        #tensorize and cat negative examples
-        neg_t = torch.tensor(created_negatives, dtype=torch.int)
-        dataset.triples = torch.cat([dataset.triples, neg_t], 0)
-        dataset.weights = torch.cat([dataset.weights, torch.tensor(weights)], 0)
+        #create negative head samples
+        h_neg = torch.stack([h_corrupt, r.repeat(num_negatives), t.repeat(num_negatives)], 1)
+        #create negative tail samples
+        t_neg = torch.stack([h.repeat(num_negatives), r.repeat(num_negatives), t_corrupt],1)
+
+        return h_neg, t_neg
 
 #validation loss
 def eval():
@@ -97,19 +95,35 @@ best_loss = 10
 val_record = []
 
 for e in range(epochs):
-    #generate new negative samples
-    createNegativeSamples(train_set, train_set.triples_record, 2)
-    for i, (data, targets) in enumerate(pbar := tqdm(train_loader)):
-        confidences = model(data.to(device))
-        loss = loss_func(confidences, targets.to(device))
-        loss.backward()
+    for i, dt in enumerate(pbar := tqdm(train_loader)):
+        if using_psl:
+            #extract psl triples
+            (data, targets, psl_data, psl_targets) = dt
+        else:
+            (data, targets) = dt
+        #generate new negative samples
+        h_neg, t_neg = createNegativeSamples(data, num_negatives)
+        #get neg loss
+        h_neg_loss = model(h_neg.to(device)).square().mean()
+        t_neg_loss = model(t_neg.to(device)).square().mean()
+
+        if use_reg:
+            confidences, r_score = model(data.to(device), regularize=use_reg, regularize_scale=reg_scale)
+            loss = loss_func(confidences, targets.to(device)) + r_score
+        else:
+            confidences = model(data.to(device))
+            loss = loss_func(confidences, targets.to(device))
+        if using_psl:
+            psl_loss = model.compute_psl_loss(psl_data.to(device), psl_targets.to(device), psl_off=0, psl_scale=psl_scale)
+        (loss + psl_loss + (h_neg_loss + t_neg_loss)/2).backward()
         optim.step()
         optim.zero_grad()
         r_loss = r_loss * 0.9 + loss.detach() * 0.1
         pbar.set_description(f"e: {e} - t_loss: {r_loss:.2e}")
-    vloss = eval()
-    val_record.append(vloss)
-    plot_loss()
-    if vloss < best_loss:
-        torch.save(model, f"./models/{data_set}/{vloss:.2e}.model")
-        best_loss = vloss
+    if((e+1) % eval_every == 0):
+        vloss = eval()
+        val_record.append(vloss)
+        plot_loss()
+        if vloss < best_loss:
+            torch.save(model, f"./models/{data_set}/{vloss:.2e}.model")
+            best_loss = vloss

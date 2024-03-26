@@ -12,23 +12,23 @@ data_dir = "./data/"
 data_set = "nl27k"
 batch_size = 2048
 dim = 128
-paper_mse = 0.00343
-paper_mae = 0.00793
-paper_lin_dcg = 0.955
-paper_exp_dcg = 0.956
+paper_mse = 0.0236
+paper_mae = 0.0690
+paper_lin_dcg = 0.939
+paper_exp_dcg = 0.942
 
 #setup datasets
 train_set = KGDataset(data_dir + data_set + "/train.tsv")
-val_set = KGDataset(data_dir + data_set + "/val.tsv", train_set)
+test_set = KGDataset(data_dir + data_set + "/val.tsv", train_set)
 
 #setup data laoders
-val_loader = DataLoader(val_set, batch_size, shuffle=True)
+val_loader = DataLoader(test_set, batch_size, shuffle=True)
 
 #model setup
-model = UKGE(len(val_set.ents), len(val_set.rels), dim)
+model = UKGE(len(test_set.ents), len(test_set.rels), dim)
 
 #load model from ./model folder
-model = torch.load("./models/nl27k/8.38e-02.model")
+model = torch.load("./models/nl27k/2.56e-02.model")
 model.to(device)
 
 #setup loss function and optimizer
@@ -37,19 +37,13 @@ model.to(device)
 mse_loss_func = torch.nn.MSELoss()
 mae_loss_func = torch.nn.L1Loss()
 
-#function to save pytorch models based on validation loss
-def save_model(val_loss, model_name):
-    torch.save(model.state_dict(), f"{model_name}.pth")  # Save the weights of PyTorch Model to a file with given name in .pth format (Pytorch's native weight saving method)  
-    print('Model saved')          
-    return val_loss 
-
 #validation loss
 def eval_loss():
     with torch.inference_mode():
         mse_loss = 0
         mae_loss = 0
         for data, targets in val_loader:
-            confidences = model(data.to(device))
+            confidences = torch.clip(model(data.to(device)),0,1)
             mse_loss += mse_loss_func(confidences, targets.to(device)).detach()
             mae_loss += mae_loss_func(confidences, targets.to(device)).detach()
     return mse_loss.item()/len(val_loader), mae_loss.item()/len(val_loader)
@@ -58,8 +52,8 @@ def eval_loss():
 def rankQuery(hr, tw):
     #construct and process batch with each tail pair
     with torch.inference_mode():
-        full_t = torch.tensor([int(hr[0]), int(hr[1]), 0], dtype=torch.int).unsqueeze(0).expand(len(val_set.ents), -1).clone()
-        full_t[:,2] = torch.tensor([*[i for i in range(len(val_set.ents))]], dtype=torch.int)
+        full_t = torch.tensor([int(hr[0]), int(hr[1]), 0], dtype=torch.int).unsqueeze(0).expand(len(test_set.ents), -1).clone()
+        full_t[:,2] = torch.tensor([*[i for i in range(len(test_set.ents))]], dtype=torch.int)
         out = model(full_t.to(device)).cpu()
         #tensor of ordered indices
         _, indices = out.sort(descending=True)
@@ -74,12 +68,12 @@ def rankQuery(hr, tw):
 def eval_dcg():
     #get unique h, r pairs and all thier t mappings
     hr_map = {}
-    for i, triple in enumerate(val_set.triples):
+    for i, triple in enumerate(test_set.triples):
         index = (int(triple[0]), int(triple[1]))
         if index in hr_map:
-            hr_map[index][int(triple[2])] = float(val_set.weights[i])
+            hr_map[index][int(triple[2])] = float(test_set.weights[i])
         else:
-            hr_map[index] = {int(triple[2]): float(val_set.weights[i])}
+            hr_map[index] = {int(triple[2]): float(test_set.weights[i])}
     #for each tuple
     ndcg = 0
     exp_ndcg = 0
