@@ -68,18 +68,18 @@ kg_rels_1 = get_url_tails(split_lines(folder_path, "rel_triples_1"))
 kg_rels_2 = get_url_tails(split_lines(folder_path, "rel_triples_2"))
 
 #read in a mapping file that maps kg 1 entites to kg 2 entites
-rel_map = get_url_tails(split_lines(folder_path, "ent_links", 2))
+#rel_map = get_url_tails(split_lines(folder_path, "ent_links", 2))
 
 #create a generic mapping for either direction
-gmap = {}
-for i, rel in enumerate(rel_map):
-    gmap[rel[0]] = i
-    gmap[rel[1]] = i
+#gmap = {}
+#for i, rel in enumerate(rel_map):
+#    gmap[rel[0]] = i
+#    gmap[rel[1]] = i
 
 final_list = []
-final_list.extend(map_generic(kg_rels_1, gmap))
+final_list.extend(kg_rels_1)
 
-final_list.extend(map_generic(kg_rels_2, gmap))
+final_list.extend(kg_rels_2)
     
 #read in test data for cross KG links, and create new fact with custom relation
 #also process validation and test data
@@ -92,19 +92,16 @@ for folder in os.listdir(folder_path + '721_5fold/'):
     if folder.isdigit():
         test_data = get_url_tails(split_lines(folder_path + '721_5fold/' + folder + "/", "test_links", 2))
         #map test facts to generic ids
-        test_data = map_generic_2(test_data, gmap)
         for fact in test_data:
             final_list.append([fact[0], cust_rel, fact[1]])
         #load in val data
         val_data = get_url_tails(split_lines(folder_path + '721_5fold/' + folder + "/", "valid_links", 2))
         #map val facts to generic ids
-        val_data = map_generic_2(val_data, gmap)
         for fact in val_data:
             val_list.append([fact[0], cust_rel, fact[1]])
         #load in test data
         test_data = get_url_tails(split_lines(folder_path + '721_5fold/' + folder + "/", "test_links", 2))
         #map test facts to generic ids
-        test_data = map_generic_2(test_data, gmap)
         for fact in test_data:
             test_list.append([fact[0], cust_rel, fact[1]])
 
