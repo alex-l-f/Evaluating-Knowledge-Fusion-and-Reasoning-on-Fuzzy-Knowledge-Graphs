@@ -1,7 +1,7 @@
 from torch.utils.data import DataLoader
 import torch
-from UKGE.KGDataset import KGDataset
-from UKGE.UKGE import UKGE
+from KGDataset import KGDataset
+from TuckER import TuckER
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,23 +19,24 @@ paper_exp_dcg = 0.942
 
 #setup datasets
 train_set = KGDataset(data_dir + data_set + "/train.tsv")
-test_set = KGDataset(data_dir + data_set + "/val.tsv", train_set)
+test_set = KGDataset(data_dir + data_set + "/test.tsv", train_set)
 
 #setup data laoders
 val_loader = DataLoader(test_set, batch_size, shuffle=True)
 
 #model setup
-model = UKGE(len(test_set.ents), len(test_set.rels), dim)
+model = TuckER(len(train_set.ents), len(train_set.rels), dim, dim)
 
 #load model from ./model folder
-model = torch.load("./models/nl27k/2.56e-02.model")
+model = torch.load("./models/nl27k/3.00e-03.model")
+model.eval()
 model.to(device)
 
 #setup loss function and optimizer
 #loss function is MSELoss, optimizer is Adam
 
-mse_loss_func = torch.nn.MSELoss()
-mae_loss_func = torch.nn.L1Loss()
+mse_loss_func = torch.nn.MSELoss(reduction='sum')
+mae_loss_func = torch.nn.L1Loss(reduction='sum')
 
 #validation loss
 def eval_loss():
@@ -44,24 +45,23 @@ def eval_loss():
         mae_loss = 0
         for data, targets in val_loader:
             confidences = torch.clip(model(data.to(device)),0,1)
-            mse_loss += mse_loss_func(confidences, targets.to(device)).detach()
-            mae_loss += mae_loss_func(confidences, targets.to(device)).detach()
+            mse_loss += mse_loss_func(confidences, targets.to(device)).detach()*(1000/len(test_set.ents)) #scale loss so it (very approximatley) matches UKGE method
+            mae_loss += mae_loss_func(confidences, targets.to(device)).detach()*(1000/len(test_set.ents))
     return mse_loss.item()/len(val_loader), mae_loss.item()/len(val_loader)
 
 #gets rank for each known entry in a query relative to the whole vocabulary
 def rankQuery(hr, tw):
     #construct and process batch with each tail pair
     with torch.inference_mode():
-        full_t = torch.tensor([int(hr[0]), int(hr[1]), 0], dtype=torch.int).unsqueeze(0).expand(len(test_set.ents), -1).clone()
-        full_t[:,2] = torch.tensor([*[i for i in range(len(test_set.ents))]], dtype=torch.int)
+        full_t = torch.tensor([int(hr[0]), int(hr[1])], dtype=torch.int64).unsqueeze(0)
         out = model(full_t.to(device)).cpu()
         #tensor of ordered indices
         _, indices = out.sort(descending=True)
         #"invert" index tensor so index is tail and value is rank
         _, ranks = indices.sort(descending=False)
     #extract and return the ranks of the relevant tails
-    tails = torch.tensor(list(tw.keys()), dtype=torch.int)
-    return ranks[tails]
+    tails = torch.tensor(list(tw.keys()), dtype=torch.int64)
+    return ranks[0,tails]
 
 
 #nDCG
