@@ -73,7 +73,7 @@ class KGDataset(Dataset):
             weights.append(w)
             self.base_triples_record.add((h, r, t))
         self.triples_record = self.base_triples_record.copy()
-        return torch.tensor(triples, dtype=torch.int), torch.tensor(weights)
+        return torch.tensor(triples, dtype=torch.int64), torch.tensor(weights)
 
     def lookupRelName(self, x):
         return self.lookup_rels[x]
