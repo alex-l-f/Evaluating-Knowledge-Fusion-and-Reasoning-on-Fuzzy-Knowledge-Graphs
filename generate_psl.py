@@ -2,7 +2,7 @@ from collections import defaultdict
 from tqdm import tqdm
 
 #config
-filename = "./data/NL27K/train.tsv"
+filename = "./data/OpenEA/EN_DE_100K_V2/final_list.tsv"
 
 #load data
 index_ents = {}
@@ -98,7 +98,7 @@ for r in r_hit_rate_final.keys():
 r_hit_rate_final_flat = sorted(r_hit_rate_final_flat, key=lambda x: x[3], reverse=True)
 
 #filter out rules with low hit rate and count
-r_hit_rate_final_flat = list(filter(lambda x: x[3] > 0.3 and r_count[x[0]][x[1]] > 500, r_hit_rate_final_flat))
+r_hit_rate_final_flat = list(filter(lambda x: x[3] >= 0.5 and r_count[x[0]][x[1]] > 100, r_hit_rate_final_flat))
 
 #construct new tuples based on (h,r,t)^(t,r',t')->(h,r'',t') for missing tuples
 print("Generating new triples")

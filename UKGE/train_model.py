@@ -5,16 +5,18 @@ from UKGE import UKGE
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+
 #setup
 epochs = 1000
-learn_rate = 0.0005
-dim = 200
+learn_rate = 0.0001
+dim = 128
 batch_size = 512
 eval_every = 1
 
 device = "cuda"
-data_dir = "./data/"
-data_set = "OpenEA/EN_DE_100K_V2"
+data_dir = "./data/OpenEA/"
+data_set = "EN_DE_100K_V2"
 use_reg = True
 reg_scale = 0.0005
 num_negatives = 10
@@ -124,5 +126,6 @@ for e in range(epochs):
         val_record.append(vloss)
         plot_loss()
         if vloss < best_loss:
+            os.makedirs(f"./models/{data_set}/", exist_ok = True) 
             torch.save(model, f"./models/{data_set}/{vloss:.2e}.model")
             best_loss = vloss
