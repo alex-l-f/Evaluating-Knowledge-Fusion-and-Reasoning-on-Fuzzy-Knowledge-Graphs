@@ -6,7 +6,7 @@ Configuration is not argument based, but requires editing configuration lines at
 
 All code is expected to be run with from the root project directory. I recommend using visual studio code or a similar IDE to do so automatically.
 
-A requirements.txt file is included, thought the only hard requirements should be pytorch, tqdm, and numpy. 
+A requirements.txt file is included, thought the only hard requirements should be pytorch, pyplotlib, tqdm, and numpy. 
 Specific version of numpy can give errors when generating the PCA plots, so if you encounter those I recommened using the version specified in the requirements.
 
 Finally, this code has only been tested on PCs with CUDA compatible GPUs, though the relevant scripts should easily be changeable by altering the device line in the config block.
