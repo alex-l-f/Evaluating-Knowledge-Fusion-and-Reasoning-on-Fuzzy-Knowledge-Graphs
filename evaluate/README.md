@@ -8,5 +8,5 @@ Creates a plot of the epochs till convergence based on the training logs of mult
 ## plot_evals.py
 Takes the output of **evaluate_model.py** or **run_PRA.py** and produces plots and tables.
 ## run_PRA.py
-Runs my naieve path ranking algorithm implementation for a configured dataset. 
+Runs my naive path ranking algorithm implementation for a configured dataset. 
 It's EXTREMELY slow, and I strongly recommened running it through [PyPy](https://www.pypy.org/index.html) if you want it to complete any trials in a reasonable amount of time.
