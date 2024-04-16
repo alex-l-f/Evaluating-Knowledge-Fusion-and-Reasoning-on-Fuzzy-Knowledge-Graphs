@@ -1,7 +1,7 @@
 Repository for my CMPUT 656 Project
 
 # Overview
-Almost everthing is preconfigured to run as configured. Exceptions are noted in the folder specific readmes. 
+Almost everthing is preconfigured to run as is. Exceptions are noted in the folder specific readmes. 
 Configuration is not argument based, but requires editing configuration lines at the beginning of files.
 
 All code is expected to be run with from the root project directory. I recommend using visual studio code or a similar IDE to do so automatically.
